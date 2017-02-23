@@ -1,9 +1,12 @@
 import sys, os
 import math
+import argh
+from argh.decorators import arg
+
 from openpyxl import load_workbook
 
 
-class Pairing:
+class Pairing(object):
     '''
     Pairing procedure according to Swiss system rules.
     Adapted from 
@@ -16,8 +19,9 @@ class Pairing:
             self.pair_first_round()
         else:
             self.pair_next_round()
-
+        
         return self.pairs
+
 
     def get_detailed_pairings(self):
         pairs = []
@@ -35,7 +39,7 @@ class Pairing:
     def asign_bye(self):
         '''
         Asign a bye to the lowest ranked player who hasn't already been
-        asigned a bye
+        asigned one
         '''
 
         if len(self.players) % 2 == 1:
@@ -50,18 +54,17 @@ class Pairing:
                     if 'Bye' not in player['opponents'] :
                         player['pair'] = True
                         self.pairs.append([player,self.bye])
-                        print 'assigned bye to ', player
                         return;
 
 
     def pair_first_round(self):
+        
         sorted_players = self.order_players(self.players)
         S1count = len(self.players) / 2
         for index in range(S1count):
             self.pairs.append([sorted_players[index], sorted_players[S1count+index]])
         if len(self.players) % 2 == 1:
             self.pairs.append([sorted_players[S1count*2+1], None])
-        pass
     
     
     def pair_next_round(self):
@@ -85,8 +88,6 @@ class Pairing:
                     continue
                 
                 opponents = self.find_possible_opponents(player, group)
-                if group_score == 1.5:
-                    print opponents
 
                 # C.1: B.1, B.2
                 if len(opponents) == 0:
@@ -112,9 +113,10 @@ class Pairing:
             if len(without_opponents) > 2:
                 self.pair_group_with_transposition(without_opponents)
                 without_opponents = [pl for pl in group if not pl.has_key('pair') or pl['pair'] is False]
-                if len(without_opponents) == 1:
-                    without_opponents[0]['downfloater'] = True
-                    downfloaters.append(without_opponents[0])
+                
+                for i in range(len(without_opponents)):
+                    without_opponents[i]['downfloater'] = True
+                    downfloaters.append(without_opponents[i])
             
             if len(downfloaters) > 0 and lowest_group == group_score:
                 pass
@@ -265,7 +267,6 @@ class XlPairing(Pairing):
                          { 'name': pl[0].value,
                            'spread' : spread,
                            'rating' : pl[1].value or 0,
-                           'player' : pl[0],
                            'score'  : wins,
                            'opponents' : opponents
                          }
@@ -285,6 +286,14 @@ class XlPairing(Pairing):
         self.brackets = brackets
 
 
+    def make_it(self):
+        pairs = super(XlPairing,self).make_it()
+        sheet = self.wb.create_sheet('Round{0}'.format(self.next_round))
+        
+        for item in sorted(pairs, reverse=True, key=lambda x: (x[0]['score'], x[0]['spread'])):
+            sheet.append([item[0]['name'],'', item[1]['name'],''])
+
+        return pairs
 
     def update_scores(self):
         self.wb = load_workbook(filename=self.filename)
@@ -332,26 +341,36 @@ class XlPairing(Pairing):
                
 
 
-
-    def write_it(self):
-        sheet = self.wb.create_sheet('Round{0}'.format(self.next_round))
-        for item in sorted(pair.make_it(), reverse=True, key=lambda x: x[0]['spread']):
-            sheet.append([item[0]['name'],'', item[1]['name'],''])
-
+    def save_sheet(self):
         self.wb.save(self.filename)
 
 
+def update_results(round_number):
+    pair = XlPairing('/home/raditha/Downloads/Swiss.xlsx',int(round_number))
+    pair.update_scores()
+    pair.save_sheet()
+
+def make_pairing(round_number):
+    pair = XlPairing('/home/raditha/Downloads/Swiss.xlsx',int(round_number))
+    pair.make_it()
+    pair.save_sheet()
+
+
 if __name__ == '__main__': #pragma nocover
+    argh.dispatch_commands([update_results, make_pairing])
+
     #pair = Pairing(tournament = Tournament.objects.get(pk=245), next_round = 3)
     #for item in sorted(pair.make_it(), reverse=True, key=lambda x: x[0]['spread']):
     #    print item[0]['name'], item[1]['name']
 
-    pair = XlPairing('/home/raditha/Downloads/Swiss.xlsx',3)
-    for item in sorted(pair.make_it(), reverse=True, key=lambda x: x[0]['spread']):
-        print item[0]['name'], item[1]['name']
+    #pair = XlPairing('/home/raditha/Downloads/Swiss.xlsx',4)
+
+    #pair.update_scores()
+    
+    #for item in sorted(pair.make_it(), reverse=True, key=lambda x: x[0]['spread']):
+    #    print item[0]['name'], item[1]['name']
 
 #    pair.write_it()
 
-#    pair.update_scores()
-    pair.write_it()
+    #pair.write_it()
 
