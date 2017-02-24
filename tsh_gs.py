@@ -120,10 +120,11 @@ class TshGS(Tsh):
 
         values = []
         for row in sorted(rows, key=lambda x: (x[2],x[3]), reverse = True):
-            values.append({'range': 'Initial','majorDimension': 'ROWS', 'values': row})
+#            values.append({'range': 'Initial','majorDimension': 'ROWS', 'values': row})
+            self.service.spreadsheets().values().append(spreadsheetId=filename, body={'values': row })
 
-        response = self.service.spreadsheets().values().batchUpdate(spreadsheetId=filename,
-            body=values).execute()
+ #       response = self.service.spreadsheets().values().batchUpdate(spreadsheetId=filename,
+ #           body=values).execute()
 
         for i, rnd in enumerate(rounds):
             sheet = wb.create_sheet('Round{0}'.format(i))
