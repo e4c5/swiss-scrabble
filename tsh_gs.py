@@ -120,18 +120,29 @@ class TshGS(Tsh):
 
         values = []
         for row in sorted(rows, key=lambda x: (x[2],x[3]), reverse = True):
-#            values.append({'range': 'Initial','majorDimension': 'ROWS', 'values': row})
-            self.service.spreadsheets().values().append(spreadsheetId=filename, body={'values': row })
+            values.append(row)
+#            values.append({'range': 'Initial','majorDimension': 'COLUMNS', 'values': [row]})
+#            self.service.spreadsheets().values().append(spreadsheetId=filename,
+#                    valueInputOption='RAW',
+#                    body={'values': [row] }, range="A1").execute()
 
- #       response = self.service.spreadsheets().values().batchUpdate(spreadsheetId=filename,
- #           body=values).execute()
+        response = self.service.spreadsheets().values().batchUpdate(spreadsheetId=filename,
+                body={'data': {'values': values, 'range': 'Initial!A1'}, 'valueInputOption': 'RAW'}).execute()
+
 
         for i, rnd in enumerate(rounds):
-            sheet = wb.create_sheet('Round{0}'.format(i))
-            for p in rnd:
-                sheet.append(p.to_array())
+            requests = [ {'addSheet': {'properties': {'title': 'Round{0}'.format(i+1)}}}]
 
-        wb.save(filename)
+            response = self.service.spreadsheets().batchUpdate(spreadsheetId=filename,
+                body={'requests': requests}).execute()
+            values = [] 
+            for p in rnd:
+                values.append(p.to_array())
+
+            response = self.service.spreadsheets().values().batchUpdate(spreadsheetId=filename,
+                body={'data': {'values': values, 'range': 'Round{0}!A1'.format(i+1)},
+                    'valueInputOption': 'RAW'}).execute()
+
 
 
 if __name__ == '__main__':
