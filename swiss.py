@@ -41,7 +41,6 @@ class Pairing(object):
         Asign a bye to the lowest ranked player who hasn't already been
         asigned one
         '''
-
         if len(self.players) % 2 == 1:
             sorted_brackets_keys = sorted(self.brackets)
             for group_score in sorted_brackets_keys:
@@ -92,6 +91,7 @@ class Pairing(object):
                 # C.1: B.1, B.2
                 if len(opponents) == 0:
                     player['downfloater'] = True
+
                     downfloaters.append(player)
                 elif len(opponents) == 1:
                     if player.has_key('downfloater') and player['downfloater']:
@@ -100,9 +100,11 @@ class Pairing(object):
                     self.pairs.append([playerW, playerB])
                     playerW['pair'] = True
                     playerB['pair'] = True
-                elif len(opponents) > 1 and player.has_key('downfloater') and player['downfloater']:
+                elif len(opponents) > 1 :
                     sorted_players = self.order_players(opponents)
-                    sorted_players[0]['upfloater'] = True
+                    
+                    if player.has_key('downfloater') and player['downfloater']:
+                       sorted_players[0]['upfloater'] = True
                     playerW, playerB = self.return_with_color_preferences(player, sorted_players[0])
                     self.pairs.append([playerW, playerB])
                     playerW['pair'] = True
@@ -111,13 +113,13 @@ class Pairing(object):
                     
             without_opponents = [pl for pl in group if not pl.has_key('pair') or pl['pair'] is False]
             if len(without_opponents) > 2:
+
                 self.pair_group_with_transposition(without_opponents)
                 without_opponents = [pl for pl in group if not pl.has_key('pair') or pl['pair'] is False]
                 
-                for i in range(len(without_opponents)):
-                    without_opponents[i]['downfloater'] = True
-                    downfloaters.append(without_opponents[i])
-            
+                if len(without_opponents) == 1:
+                    without_opponents[0]['downfloater'] = True
+                    downfloaters.append(without_opponents[0]) 
             if len(downfloaters) > 0 and lowest_group == group_score:
                 pass
         pass
@@ -142,6 +144,7 @@ class Pairing(object):
                     if i != k:
                         S2[k], S2[i] = S2[i], S2[k]
             pass
+        
 
         # Check simple pairing
         for S2 in transposition(0, S2count):
@@ -196,12 +199,21 @@ class Pairing(object):
     # B.1, B.2    
     def find_possible_opponents(self, current_player, group, skip_color_pref = False):
         rest = []
-        
-        for player in group:
-            if current_player != player :
-                if not player.has_key('pair') or player['pair'] is False:
-                    if player['name'] not in current_player['opponents'] : 
-                        rest.append(player)
+        idx = group.index(current_player)
+        c = len(group) / 2
+        if c > idx:
+            for player in group[c:]:
+                if current_player != player :
+                    if not player.has_key('pair') or player['pair'] is False:
+                        if player['name'] not in current_player['opponents'] : 
+                            rest.append(player)
+
+        if len(rest) == 0:
+            for player in group:
+                if current_player != player :
+                    if not player.has_key('pair') or player['pair'] is False:
+                        if player['name'] not in current_player['opponents'] : 
+                            rest.append(player)
 
         if len(rest) == 0:
             return []
@@ -224,10 +236,6 @@ class Pairing(object):
     def get_switched_color_for_latest_game(self, player):
         return None
     
-class GSheetPairing(Pairing):
-    ''' Pairing from tournament results stored in a Google Sheet'''
-    pass
-
 
 class XlPairing(Pairing):
     ''' Pairing from tournament results stored in excel files '''
@@ -244,7 +252,7 @@ class XlPairing(Pairing):
         self.filename = filename
 
         self.wb = load_workbook(filename=filename)
-        sheet = self.wb['Initial']
+        sheet = self.wb['Standings']
 
         self.players = []
         self.pairs = []
@@ -297,7 +305,7 @@ class XlPairing(Pairing):
 
     def update_scores(self):
         self.wb = load_workbook(filename=self.filename)
-        sheet = self.wb['Initial']
+        sheet = self.wb['Standings']
 
         players = []
         for pl in sheet.iter_rows(min_row=XlPairing.HEADER_ROWS+1,max_col=2):
@@ -351,7 +359,7 @@ def update_results(round_number):
     pair.save_sheet()
 
 def make_pairing(round_number):
-    pair = XlPairing('/home/raditha/Downloads/Swiss.xlsx',int(round_number))
+    pair = XlPairing('swiss.xlsx',int(round_number))
     pair.make_it()
     pair.save_sheet()
 
