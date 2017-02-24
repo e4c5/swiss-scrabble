@@ -8,3 +8,5 @@ For scrabble unfortunately there isn't anything at all. The most popular scrabbl
 not provide a complete implementation of the swiss pairing system. It's implementation is more like the monroe system
 (King Of The Hill in scrabble speak)
 
+At the moment the data is stored in spreadsheets using openpyxl and it can be exported into TSH and similarly TSH division files can be imported into our spreadsheets. Database support and a web interface will be added soon (via Django ORM)
+
