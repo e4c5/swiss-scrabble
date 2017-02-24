@@ -1,8 +1,10 @@
 import re
 import traceback
 import json
+import argh
 
 from openpyxl import Workbook
+from openpyxl import load_workbook
 
 class Tsh(object):
     '''
@@ -16,6 +18,15 @@ class Tsh(object):
         self.filename = filename
         self.players = [{'name': 'bye'}]
         self.rounds = 0;
+
+
+    def create_division(self,players):
+        '''
+        Creates a division file. 
+        The players list is a tuple of the form ('Player name','Rating')
+        '''
+        for player in players:
+            print player[0],",",player[1]
 
 
     def process_data(self):
@@ -84,6 +95,36 @@ class Tsh(object):
 
             players[0]['scores'] = [0] * len(players[1]['scores'])
             
+    def create_division(self, players=None):
+        wb = load_workbook(filename=self.filename)
+        sheet = wb['Initial']
+        for row in sheet.iter_rows(min_row=2):
+            print row[0].value,',',row[1].value or 0
+
+    def export_rounds(self):
+        wb = load_workbook(filename=self.filename)
+
+        try :
+            for i in range(1,self.rounds+1) :
+                sheet = wb['Round{0}'.format(i)]
+                for row in sheet.iter_rows():
+                    print 'pair {0} {1} {2}'.format(row[0].value, 0 if row[2].value == 'Bye' else row[2].value, i)
+        except KeyError:
+            pass
+        
+        try :
+            for i in range(1,self.rounds+1) :
+                sheet = wb['Round{0}'.format(i)]
+                print 'a {0}'.format(i)
+
+                for row in sheet.iter_rows():
+                    if row[2].value != 'Bye':
+                        print " ".join([str(r.value) for r in row[:4]])
+
+                print ''
+        except KeyError:
+            pass
+
 class TshXl(Tsh):
     '''
     Saves processed TSH data into a spreadsheet
@@ -93,7 +134,10 @@ class TshXl(Tsh):
         players = self.players
         wb = Workbook()
         sheet = wb.create_sheet('Standings')
+        sheet.append(['Player','Rating','Wins','Margin'])
+
         rows = []
+        rounds = []
 
         for idx, player in enumerate(players):
             if player['name'] == 'bye':
@@ -108,26 +152,31 @@ class TshXl(Tsh):
                 opponent = players[int(opposite)]
                 row.append(opponent['name'])
 
-                player_score = player['scores'][i]
-                opponent_score = opponent['scores'][i]
+                try:
+                    player_score = player['scores'][i]
+                    opponent_score = opponent['scores'][i]
 
-                if opponent['name'] == 'bye' :
-                    margin = int(player['scores'][i])
-                else :
-                    margin = int(player['scores'][i]) - int(opponent['scores'][i])
+                    if opponent['name'] == 'bye' :
+                        margin = int(player['scores'][i])
+                    else :
+                        margin = int(player['scores'][i]) - int(opponent['scores'][i])
 
-                if margin > 0 :
-                    win = 1
-                elif margin == 0 :
-                    win = 0.5
-                else :
-                    win = 0
+                    if margin > 0 :
+                        win = 1
+                    elif margin == 0 :
+                        win = 0.5
+                    else :
+                        win = 0
 
-                wins += win
-                row.append(win)
-                row.append(margin)
+                    wins += win
+                    row.append(win)
+                    row.append(margin)
 
-                spread += margin
+                    spread += margin
+
+                except IndexError:
+                    # this round doesn't have scores yet
+                    pass
 
             row[2] = wins
             row[3] = spread
@@ -138,9 +187,19 @@ class TshXl(Tsh):
 
         wb.save(filename)
 
+def excel_to_division():
+    tsh = TshXl('/home/raditha/Downloads/Swiss.xlsx')
+    tsh.create_division()
 
-tsh = TshXl('/home/raditha/SLSL/unrated/2015/Junior/a.t')
-tsh.process_data()
-tsh.save_to_xl('swiss.xlsx')
+def division_to_excel():
+    tsh = TshXl('/tmp/Junior/a.t')
+    tsh.process_data()
+    tsh.save_to_xl('swiss.xlsx')
 
+def excel_to_tsh_pairs():
+    tsh = TshXl('/home/raditha/Downloads/Swiss.xlsx')
+    tsh.rounds = 6
+    tsh.export_rounds()
+
+argh.dispatch_commands([excel_to_division, division_to_excel, excel_to_tsh_pairs])
 
