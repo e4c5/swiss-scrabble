@@ -6,6 +6,36 @@ import argh
 from openpyxl import Workbook
 from openpyxl import load_workbook
 
+class Pair(object):
+    '''
+    Represents a pairing in a round.
+    If the scores are no present that means the round has not been concluded
+    '''
+
+    def __init__(self, player1, player2, score1, score2):
+        if player1 == 'Bye' or player2 == 'Bye' or player1 < player2:
+            self.player2 = player2
+            self.player1 = player1
+            self.score2 = score2
+            self.score1 = score1
+        else :
+            self.player1 = player2
+            self.player2 = player1
+            self.score1 = score2
+            self.score2 = score1
+
+    def __eq__(self, other):
+        if isinstance(other, Pair):
+            if self.player1 == other.player1 and self.player2 == other.player2:
+                if self.score1 == other.score1 and self.score2 == other.score2:
+                    return True
+
+        False
+
+    def to_array(self):
+        return [self.player1, self.score1, self.player2, self.score2]
+
+
 class Tsh(object):
     '''
     Imports data from TSH
@@ -115,7 +145,7 @@ class Tsh(object):
         try :
             for i in range(1,self.rounds+1) :
                 sheet = wb['Round{0}'.format(i)]
-                print 'a {0}'.format(i)
+                print 'ag {0}'.format(i)
 
                 for row in sheet.iter_rows():
                     if row[2].value != 'Bye':
@@ -137,7 +167,7 @@ class TshXl(Tsh):
         sheet.append(['Player','Rating','Wins','Margin'])
 
         rows = []
-        rounds = []
+        rounds = [ [] for i in range(len(players[1]['opponents']))] 
 
         for idx, player in enumerate(players):
             if player['name'] == 'bye':
@@ -148,7 +178,9 @@ class TshXl(Tsh):
             wins = 0
             spread = 0
             
+            
             for i,opposite in enumerate(player['opponents']) :
+
                 opponent = players[int(opposite)]
                 row.append(opponent['name'])
 
@@ -156,7 +188,7 @@ class TshXl(Tsh):
                     player_score = player['scores'][i]
                     opponent_score = opponent['scores'][i]
 
-                    if opponent['name'] == 'bye' :
+                    if opponent['name'] == 'Bye' :
                         margin = int(player['scores'][i])
                     else :
                         margin = int(player['scores'][i]) - int(opponent['scores'][i])
@@ -173,10 +205,13 @@ class TshXl(Tsh):
                     row.append(margin)
 
                     spread += margin
-
+                    p = Pair(player['name'],opponent['name'], player_score, opponent_score)
                 except IndexError:
                     # this round doesn't have scores yet
-                    pass
+                    p = Pair(player['name'],opponent['name'], '','')
+
+                if p not in rounds[i]:
+                    rounds[i].append(p)
 
             row[2] = wins
             row[3] = spread
@@ -185,21 +220,42 @@ class TshXl(Tsh):
         for row in sorted(rows, key=lambda x: (x[2],x[3]), reverse = True):
             sheet.append(row)
 
+        for i, rnd in enumerate(rounds):
+            sheet = wb.create_sheet('Round{0}'.format(i))
+            for p in rnd:
+                sheet.append(p.to_array())
+
         wb.save(filename)
 
 def excel_to_division():
+    '''
+    Generate a tsh division file
+    '''
     tsh = TshXl('/home/raditha/Downloads/Swiss.xlsx')
     tsh.create_division()
 
 def division_to_excel():
+    '''
+    Import data from tsh into a spreadsheet
+    '''
     tsh = TshXl('/tmp/Junior/a.t')
     tsh.process_data()
     tsh.save_to_xl('swiss.xlsx')
 
 def excel_to_tsh_pairs():
+    '''
+    Generate tsh pairing commands.
+    The pairing is actually done with our code and it's saved in a spreadsheet.
+    This data can be exported to tsh via generated tsh pairing commands. The 
+    scores are also exported via tsh add scores commands
+    '''
+
     tsh = TshXl('/home/raditha/Downloads/Swiss.xlsx')
     tsh.rounds = 6
     tsh.export_rounds()
 
-argh.dispatch_commands([excel_to_division, division_to_excel, excel_to_tsh_pairs])
+
+if __name__ == '__main__': #pragma nocover
+
+    argh.dispatch_commands([excel_to_division, division_to_excel, excel_to_tsh_pairs])
 
