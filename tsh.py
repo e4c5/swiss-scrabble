@@ -46,7 +46,7 @@ class Tsh(object):
 
     def __init__(self, filename):
         self.filename = filename
-        self.players = [{'name': 'bye'}]
+        self.players = [{'name': 'Bye'}]
         self.rounds = 0;
 
 
@@ -170,7 +170,7 @@ class TshXl(Tsh):
         rounds = [ [] for i in range(len(players[1]['opponents']))] 
 
         for idx, player in enumerate(players):
-            if player['name'] == 'bye':
+            if player['name'] == 'Bye':
                 continue
 
             row = [player['name'], player['old_rating'],0,0]
