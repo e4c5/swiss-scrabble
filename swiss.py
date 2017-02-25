@@ -339,7 +339,8 @@ class XlPairing(Pairing):
                     sheet.cell(row=opponent,column=column+1,value=0)
             else :
                 sheet.cell(row=player,column=column+1,value=0)
-                sheet.cell(row=opponent,column=column+1,value=1)
+                if opponent:
+                    sheet.cell(row=opponent,column=column+1,value=1)
             
             sheet.cell(row=player,column=column+2,value=spread)
             sheet.cell(row=player,column=column,value=game[2].value)
@@ -355,12 +356,12 @@ class XlPairing(Pairing):
 
 
 def update_results(round_number):
-    pair = XlPairing('/home/raditha/Downloads/Swiss.xlsx',int(round_number))
+    pair = XlPairing('/home/raditha/Downloads/U13.xlsx',int(round_number))
     pair.update_scores()
     pair.save_sheet()
 
 def make_pairing(round_number):
-    pair = XlPairing('swiss.xlsx',int(round_number))
+    pair = XlPairing('/home/raditha/Downloads/U13.xlsx',int(round_number))
     pair.make_it()
     pair.save_sheet()
 
