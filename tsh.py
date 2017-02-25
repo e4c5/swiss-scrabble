@@ -2,6 +2,7 @@ import re
 import traceback
 import json
 import argh
+import random
 
 from openpyxl import Workbook
 from openpyxl import load_workbook
@@ -155,6 +156,24 @@ class Tsh(object):
         except KeyError:
             pass
 
+
+    def random_results(self, count):
+        '''
+        Generates random results for simulation purposes.
+        '''
+        scores = []
+        low = 300
+        high = 600
+        for i in range(count):
+            scores.append([random.randrange(low,high),
+                random.randrange(low-50,high-50)])
+
+            low -= 1
+            high -= 1
+
+        return scores
+
+            
 class TshXl(Tsh):
     '''
     Saves processed TSH data into a spreadsheet
@@ -227,6 +246,10 @@ class TshXl(Tsh):
 
         wb.save(filename)
 
+def simulate(count):
+    tsh = TshXl('swiss.xlsx')
+    print tsh.random_results(int(count))
+
 def excel_to_division():
     '''
     Generate a tsh division file
@@ -257,5 +280,5 @@ def excel_to_tsh_pairs():
 
 if __name__ == '__main__': #pragma nocover
 
-    argh.dispatch_commands([excel_to_division, division_to_excel, excel_to_tsh_pairs])
+    argh.dispatch_commands([excel_to_division, division_to_excel, excel_to_tsh_pairs, simulate])
 
