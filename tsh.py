@@ -126,37 +126,6 @@ class Tsh(object):
 
             players[0]['scores'] = [0] * len(players[1]['scores'])
             
-    def create_division(self, players=None):
-        wb = load_workbook(filename=self.filename)
-        sheet = wb['Initial']
-        for row in sheet.iter_rows(min_row=2):
-            print row[0].value,',',row[1].value or 0
-
-    def export_rounds(self):
-        wb = load_workbook(filename=self.filename)
-
-        try :
-            for i in range(1,self.rounds+1) :
-                sheet = wb['Round{0}'.format(i)]
-                for row in sheet.iter_rows():
-                    print 'pair {0} {1} {2}'.format(row[0].value, 0 if row[2].value == 'Bye' else row[2].value, i)
-        except KeyError:
-            pass
-        
-        try :
-            for i in range(1,self.rounds+1) :
-                sheet = wb['Round{0}'.format(i)]
-                print 'ag {0}'.format(i)
-
-                for row in sheet.iter_rows():
-                    if row[2].value != 'Bye':
-                        print " ".join([str(r.value) for r in row[:4]])
-
-                print ''
-        except KeyError:
-            pass
-
-
     def random_results(self, count):
         '''
         Generates random results for simulation purposes.
@@ -178,6 +147,69 @@ class TshXl(Tsh):
     '''
     Saves processed TSH data into a spreadsheet
     '''
+    MAIN_SHEET = 'Standings'
+
+    def __init__(self, filename=None, division_file=None):
+        super(TshXl,self).__init__(filename)
+    
+        if filename:
+            self.wb = load_workbook(filename=self.filename)
+            sheet = self.wb[TshXl.MAIN_SHEET]
+    
+            assert sheet['A1'].value == 'Player'
+            assert sheet['B1'].value == 'Rating'
+            assert sheet['C1'].value == 'Wins'
+            assert sheet['D1'].value == 'Spread'
+
+    
+    def export_rounds(self, first, last):
+        ''' 
+        Generates a series of tsh commands.
+        These can be piped into tsh to update the division file. For each
+        round a set of pairing commands will be generated followed by a 
+        series of add score commands.
+        '''
+
+        wb = load_workbook(filename=self.filename)
+        players = [p[0] for p in self.get_seeded_players()]
+
+        try :
+            for i in range(first,last+1) :
+                sheet = wb['Round{0}'.format(i)]
+                for row in sheet.iter_rows():
+                    if row[0].value == 'Bye':
+                        pl1 = 0
+                    else :
+                        pl1 = players.index(row[0].value) +1
+                    if row[2].value == 'Bye':
+                        pl2 = 0
+                    else :
+                        pl2 = players.index(row[2].value) +1
+
+                    print 'pair {0} {1} {2}'.format(pl1, pl2, i) 
+            print ''
+
+        except KeyError:
+            print 'Round data does not exist'
+        except IndexError:
+            print 'Player not found'
+        
+        try :
+            for i in range(first,last+1) :
+                sheet = wb['Round{0}'.format(i)]
+                print 'a {0}'.format(i)
+
+                for row in sheet.iter_rows():
+                    if not (row[2].value == 'Bye' or row[0].value == 'Bye'):
+                        pl1 = players.index(row[0].value)+1
+                        pl2 = players.index(row[2].value)+1
+                       
+                        print pl1,row[1].value, pl2, row[3].value
+
+                print ''
+        except KeyError:
+            print 'Round data does not exist'
+
 
     def save_to_xl(self, filename):
         players = self.players
@@ -245,27 +277,38 @@ class TshXl(Tsh):
                 sheet.append(p.to_array())
 
         wb.save(filename)
+    
+    def get_seeded_players(self):
+        sheet = self.wb[TshXl.MAIN_SHEET]
+        rows = [(row[0].value, row[1].value or 0) for row in sheet.iter_rows(min_row=2)]
+        return sorted(rows, key=lambda x: (-x[1],x[0]))
+
+    def create_division(self, players=None):
+        
+        for row in self.get_seeded_players(): 
+            print row[0],' ',row[1]
+
 
 def simulate(count):
     tsh = TshXl('swiss.xlsx')
     print tsh.random_results(int(count))
 
-def excel_to_division():
+def excel_to_division(filename):
     '''
     Generate a tsh division file
     '''
-    tsh = TshXl('/home/raditha/Downloads/Swiss.xlsx')
+    tsh = TshXl(filename)
     tsh.create_division()
 
-def division_to_excel():
+def division_to_excel(division_file, excel_file):
     '''
     Import data from tsh into a spreadsheet
     '''
-    tsh = TshXl('/tmp/Junior/a.t')
+    tsh = TshXl(division_file)
     tsh.process_data()
-    tsh.save_to_xl('swiss.xlsx')
+    tsh.save_to_xl(excel_file)
 
-def excel_to_tsh_pairs():
+def excel_to_tsh_pairs(filename, first, last):
     '''
     Generate tsh pairing commands.
     The pairing is actually done with our code and it's saved in a spreadsheet.
@@ -273,9 +316,8 @@ def excel_to_tsh_pairs():
     scores are also exported via tsh add scores commands
     '''
 
-    tsh = TshXl('/home/raditha/Downloads/Swiss.xlsx')
-    tsh.rounds = 6
-    tsh.export_rounds()
+    tsh = TshXl(filename)
+    tsh.export_rounds(int(first), int(last))
 
 
 if __name__ == '__main__': #pragma nocover
